@@ -1,0 +1,6 @@
+#+title: A very simple terminal based on VTE
+
+#+date: [2019-07-10 mar]
+
+This is a minimalist terminal using VTE. It have the basic feature I need
+and handle Unicode nicely.
