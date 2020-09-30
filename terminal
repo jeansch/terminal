@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import gi
+gi.require_version('Vte', '2.91')
+gi.require_version('Pango', '1.0')
+gi.require_version('Gtk', '3.0')
+from gi.repository import Pango, Gtk, Gdk, Vte, GLib  # pylint: disable=C0413
+
+
+FONT = ('IBMPlexMono', 14)
+
+
+class Terminal(Gtk.Window):
+
+    def __init__(self):
+        Gtk.Window.__init__(self)
+        self.terminal = Vte.Terminal()
+        self.setup_terminal()
+        self.add(self.terminal)
+
+    def callback(self, *args):
+        pass
+
+    def setup_terminal(self):
+        self.connect("delete-event", Gtk.main_quit)
+        self.connect("key-press-event", self.key_pressed)
+        self.terminal.connect('window-title-changed',
+                              self.title_changed)
+        self.terminal.connect('child-exited',
+                              self.child_exited)
+        fd = Pango.FontDescription()
+        fd.set_family(FONT[0])
+        fd.set_size(FONT[1] * 1000)
+        self.terminal.set_font(fd)
+        self.terminal.set_audible_bell(False)
+        self.terminal.set_scrollback_lines(-1)
+        self.terminal.spawn_async(
+            Vte.PtyFlags.DEFAULT,
+            os.environ['HOME'],
+            sys.argv[1:] if len(sys.argv) > 1 else [os.environ['SHELL']],
+            [],
+            GLib.SpawnFlags.DEFAULT,
+            None,
+            (),
+            -1, None, self.callback)  # timeout (-1 is default)
+
+    def key_pressed(self, t, e):  # pylint: disable=W0613
+        if (e.state & Gdk.ModifierType.CONTROL_MASK) == \
+           Gdk.ModifierType.CONTROL_MASK:
+            if e.keyval == Gdk.KEY_equal:
+                self.terminal.set_font_scale(
+                    self.terminal.get_font_scale() + 0.1)
+                return True  # Don't propagate event
+            if e.keyval == Gdk.KEY_minus:
+                self.terminal.set_font_scale(
+                    self.terminal.get_font_scale() - 0.1)
+                return True  # Don't propagate event
+        return False
+
+    def title_changed(self, t):  # pylint: disable=W0613
+        self.set_title(self.terminal.get_window_title())
+
+    def child_exited(self, t, code):  # pylint: disable=W0613
+        sys.exit(code)
+
+
+Terminal().show_all()
+Gtk.main()
